@@ -1,48 +1,51 @@
 const express = require('express');
-const moment = require('moment');
-
+const moment = require('moment'); // Optional, for easier date parsing and formatting
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Serve static files (e.g., index.html)
+// Function to format dates
+const formatDate = (date) => {
+  const unixTime = date.getTime();
+  const utcTime = date.toUTCString();
+  return {
+    unix: unixTime,
+    utc: utcTime,
+  };
+};
+
+// API route to handle both valid and invalid dates
+app.get('/api/:date?', (req, res) => {
+  const { date } = req.params;
+
+  // If no date is provided, use current date and time
+  if (!date) {
+    const currentDate = new Date();
+    return res.json(formatDate(currentDate));
+  }
+
+  let parsedDate;
+
+  // Check if the date is a number (Unix timestamp)
+  if (!isNaN(date)) {
+    parsedDate = new Date(parseInt(date));
+  } else {
+    // Try parsing the date using Date object
+    parsedDate = new Date(date);
+  }
+
+  // If parsedDate is invalid
+  if (parsedDate.toString() === 'Invalid Date') {
+    return res.json({ error: 'Invalid Date' });
+  }
+
+  // Return formatted date object
+  res.json(formatDate(parsedDate));
+});
+
+// Serve static files (for frontend, if you plan to use a frontend interface)
 app.use(express.static('public'));
 
-// API Route for current timestamp
-app.get('/api', (req, res) => {
-  const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
-  const unixTimestamp = moment().unix();
-
-  res.json({
-    unix: unixTimestamp,
-    utc: timestamp,
-  });
-});
-
-// API Route for timestamp with date input
-app.get('/api/:date_string', (req, res) => {
-  const dateString = req.params.date_string;
-
-  // Try parsing as Unix timestamp first
-  let date;
-  
-  // Check if it's a valid Unix timestamp (integer or string)
-  if (/^\d+$/.test(dateString)) {
-    date = moment.unix(dateString);
-  } else {
-    // Try parsing as a natural date string (e.g., "December 25, 2015")
-    date = moment(dateString, ["YYYY-MM-DD", "MMMM D, YYYY", "X"], true); // Added multiple formats for flexibility
-  }
-
-  if (date.isValid()) {
-    res.json({
-      unix: date.unix(),
-      utc: date.format('YYYY-MM-DD HH:mm:ss'),
-    });
-  } else {
-    res.json({ error: 'Invalid Date' });
-  }
-});
-
+// Start server
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 });
